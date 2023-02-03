@@ -35,8 +35,8 @@ function navlist#toggle() abort
     autocmd!
     autocmd CursorMoved <buffer> call navlist#moved(s:nv_bufnr)
     autocmd BufLeave <buffer> silent echom "left"
+    autocmd WinClosed <buffer> execute "bdelete " .. s:nv_bufnr
 
-    
    augroup END
 
    if &splitright
@@ -56,8 +56,9 @@ function navlist#moved(bufnr) abort
     endif
 
     if s:line_num != b:prev_line
+        let s:position = s:line_num * 3
     
         let id = bufwinid(b:parent_bufnr)
-        call win_execute(id, ['call setpos(".", [0, s:line_num, 1, 1])', 'redraw'])
+        call win_execute(id, ['call setpos(".", [0, s:position, 1, 1])', 'redraw'])
     endif
 endfunction
