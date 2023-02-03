@@ -2,6 +2,8 @@
 
 function navlist#toggle() abort
 
+   let s:file = expand("%")
+
    if &ft == "navlist"
        bdelete
        " TODO change too use buffer reference
@@ -26,6 +28,7 @@ function navlist#toggle() abort
    setlocal buftype=nofile
    setlocal bufhidden=hide
    setlocal filetype=navlist
+
    file "[Scratch]"
    
    let s:nv_bufnr = bufnr("%")
@@ -35,10 +38,12 @@ function navlist#toggle() abort
     autocmd!
     autocmd CursorMoved <buffer> call navlist#moved(s:nv_bufnr)
     autocmd BufLeave <buffer> silent echom "left"
-    autocmd WinClosed <buffer> execute "bdelete " .. s:nv_bufnr
+
+    autocmd WinClosed <buffer> call navlist#onclose()
 
    augroup END
 
+   call navlist#store(s:file)
    if &splitright
        wincmd h
    else
@@ -56,9 +61,37 @@ function navlist#moved(bufnr) abort
     endif
 
     if s:line_num != b:prev_line
-        let s:position = s:line_num * 3
+        let s:position = 0
+        " TODO check out off bounds
+        if exists("b:list")
+            let s:position = b:list[s:line_num - 1]
+        endif
     
         let id = bufwinid(b:parent_bufnr)
-        call win_execute(id, ['call setpos(".", [0, s:position, 1, 1])', 'redraw'])
+        call win_execute(id, ['call setpos(".", [0, s:position, 1, 1])', 'normal zz', 'redraw'])
     endif
+endfunction
+
+function navlist#store(file) abort
+    let s:cmd = join([g:navlist_cmd, " -- ", a:file], "")
+    let res = split(system(s:cmd), "\n")
+
+    let b:list = []
+    for line in res
+        let line = split(line, ':')
+        call add(b:list, line[0])
+
+        call append(line('$') - 1, line[1])
+    endfor
+    " delete last empty line
+    d
+    setlocal readonly
+    
+endfunction
+
+
+function navlist#onclose() abort
+    execute "bdelete " .. s:nv_bufnr
+    " reset list_display
+    let b:list_display = 'off'
 endfunction
