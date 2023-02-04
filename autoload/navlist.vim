@@ -1,5 +1,4 @@
 
-
 function navlist#toggle() abort
 
    let s:file = expand("%")
@@ -37,10 +36,13 @@ function navlist#toggle() abort
    augroup NList
     autocmd!
     autocmd CursorMoved <buffer> call navlist#moved(s:nv_bufnr)
-    autocmd BufLeave <buffer> silent echom "left"
+    " TODO highlight line, and de-highlight when left
+    "autocmd BufLeave <buffer> silent echom "left"
 
-    autocmd WinClosed <buffer> call navlist#onclose()
-
+    " TODO check if old buffer id is not visible 
+    " then remove that and open a new buffer.
+    " removed for backward compatibility
+    "autocmd WinClosed <buffer> call navlist#onclose()
    augroup END
 
    call navlist#store(s:file)
@@ -51,7 +53,6 @@ function navlist#toggle() abort
    endif
 
    let b:nv_bufnr = s:nv_bufnr
-    
 endfunction
 
 function navlist#moved(bufnr) abort
@@ -61,18 +62,26 @@ function navlist#moved(bufnr) abort
     endif
 
     if s:line_num != b:prev_line
-        let s:position = 0
-        " TODO check out off bounds
         if exists("b:list")
-            let s:position = b:list[s:line_num - 1]
+            let s:index = s:line_num - 1
+            " check out off bounds
+            if len(b:list) > s:index
+                let s:position = b:list[s:line_num - 1]
+            endif
+            let id = bufwinid(b:parent_bufnr)
+            " TODO use old cursor position to dermine column
+            call win_execute(id, ['call setpos(".", [0, s:position, 1, 1])', 'normal zz', 'redraw'])
         endif
-    
-        let id = bufwinid(b:parent_bufnr)
-        call win_execute(id, ['call setpos(".", [0, s:position, 1, 1])', 'normal zz', 'redraw'])
     endif
 endfunction
 
 function navlist#store(file) abort
+    " TODO show in checkhealth, that this variable is missing
+    if !exists("g:navlist_cmd")
+        echom "Missing g:navlist_cmd is not set"
+        return
+    endif
+
     let s:cmd = join([g:navlist_cmd, " -- ", a:file], "")
     let res = split(system(s:cmd), "\n")
 
@@ -88,7 +97,6 @@ function navlist#store(file) abort
     setlocal readonly
     
 endfunction
-
 
 function navlist#onclose() abort
     execute "bdelete " .. s:nv_bufnr
