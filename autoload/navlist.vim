@@ -36,8 +36,9 @@ function navlist#toggle() abort
    augroup NList
     autocmd!
     autocmd CursorMoved <buffer> call navlist#moved(s:nv_bufnr)
+    autocmd FileType navlist nnoremap <buffer> q :NList<CR>
     " TODO highlight line, and de-highlight when left
-    "autocmd BufLeave <buffer> silent echom "left"
+    autocmd BufLeave <buffer> let b:has_init = 0
 
     " TODO check if old buffer id is not visible 
     " then remove that and open a new buffer.
@@ -55,7 +56,37 @@ function navlist#toggle() abort
    let b:nv_bufnr = s:nv_bufnr
 endfunction
 
+" set line position corresponding to current parent position.
+function navlist#syncline() abort
+
+    " get current parent line number
+    let id = bufwinid(b:parent_bufnr)
+    call win_execute(id, ['let s:line_num = line(".")'])
+
+    " search the list to the closest match
+    let start = 0
+    let end = len(b:list) - 1
+    while start <= end
+        let index = (start + end) / 2
+        if b:list[index] < s:line_num
+            let start = index + 1
+        elseif b:list[index] > s:line_num
+            let end = index - 1
+        elseif start == end
+            call setpos(".", [0, start + 1, 1, 1])
+            redraw
+            return
+        endif
+    endwhile
+endfunction
+
 function navlist#moved(bufnr) abort
+    " only search once first moved to buffer
+    if !b:has_init
+        call navlist#syncline()
+    endif
+    let b:has_init = 1
+
     let s:line_num = line('.')
     if !exists("b:prev_line")
         let b:prev_line = -1
