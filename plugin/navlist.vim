@@ -4,5 +4,5 @@ if exists('g:loaded_navlist')
 endif
 let g:loaded_navlist = 1
 
-command NList :call navlist#toggle()
+command! NList :call navlist#toggle()
 
