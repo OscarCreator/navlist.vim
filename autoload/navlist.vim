@@ -63,27 +63,42 @@ function navlist#syncline() abort
     let id = bufwinid(b:parent_bufnr)
     call win_execute(id, ['let s:line_num = line(".")'])
 
-    " search the list to the closest match
-    let start = 0
-    let end = len(b:list) - 1
-    while start <= end
-        let index = (start + end) / 2
-        if b:list[index] < s:line_num
-            let start = index + 1
-        elseif b:list[index] > s:line_num
-            let end = index - 1
-        elseif start == end
-            call setpos(".", [0, start + 1, 1, 1])
-            redraw
-            return
+    " find closest match
+    let first = 0
+    let last = len(b:list) - 1
+
+    if s:line_num < b:list[0]
+        return 0
+    endif
+
+    if s:line_num > b:list[last]
+        return last
+    endif
+
+    while first <= last
+        let mid = (last + first) / 2
+        if s:line_num < b:list[mid]
+            let last = mid - 1
+        elseif s:line_num > b:list[mid]
+            let first = mid + 1
+        else
+            return mid
         endif
     endwhile
+
+    if (b:list[first] - s:line_num) < (s:line_num - b:list[last])
+        return first
+    else
+        return last
+    endif
 endfunction
 
 function navlist#moved(bufnr) abort
     " only search once first moved to buffer
     if !b:has_init
-        call navlist#syncline()
+        let index = navlist#syncline()
+        call setpos(".", [0, index + 1, 1, 1])
+        redraw
     endif
     let b:has_init = 1
 
